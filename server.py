@@ -1,54 +1,71 @@
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 from fastapi.responses import PlainTextResponse
 import httpx
 import tempfile
 import os
 from markitdown import MarkItDown
+from utils import get_format
+from urllib.parse import urlparse
+from datetime import datetime
 
 app = FastAPI()
 md = MarkItDown()
 
+class ConvertRequest(BaseModel):
+    urls: list[str]
+    title: str
+
 @app.post("/convert-to-md", response_class=PlainTextResponse)
 async def convert_to_md(
-    url: str = Query(..., description="URL to a .docx or .doc file"),
-    title: str = Query("NVCA Model Term Sheet", description="Title for the document"),
-    source_url: str = Query("https://nvca.org/model-legal-documents", description="Source URL for the document"),
-    date_downloaded: str = Query("2025-07-15", description="Date the document was downloaded (YYYY-MM-DD)"),
-    original_format: str = Query("DOCX", description="Original format of the document")
+    body: ConvertRequest
 ):
-    headers = {
-        "User-Agent": "Mozilla/5.0",
-        "Referer": "https://easylegaldocs.com",
-    }
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url, headers=headers)
-            response.raise_for_status()
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to download file: {e}")
+    urls, title = body.urls, body.title
+    final_markdown = ""
 
-    is_doc = 'msword' in url
+    for url in urls:
+        format = get_format(url)
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".doc" if is_doc else ".docx") as tmp:
-        tmp.write(response.content)
-        tmp_path = tmp.name
+        parsed = urlparse(url)
+        referer = f"{parsed.scheme}://{parsed.netloc}/"
+        headers = {
+            "User-Agent": "Mozilla/5.0",
+            "Referer": referer,
+        }
 
-    try:
-        result = md.convert(tmp_path)
-    except Exception as e:
-        os.unlink(tmp_path)
-        raise HTTPException(status_code=500, detail=f"Conversion failed: {e}")
-    os.unlink(tmp_path)
+        try:
+            async with httpx.AsyncClient(follow_redirects=True) as client:
+                response = await client.get(url, headers=headers)
+                response.raise_for_status()
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Failed to download file: {e}")
 
-    lines = result.text_content.splitlines()
+        if format == "md":
+            final_markdown += "\n" + response.text
+        else:
+            with tempfile.NamedTemporaryFile(delete=False, suffix="." + format) as tmp:
+                tmp.write(response.content)
+                tmp_path = tmp.name
+
+            try:
+                result = md.convert(tmp_path)
+            except Exception as e:
+                os.unlink(tmp_path)
+                raise HTTPException(status_code=500, detail=f"Conversion failed: {e}")
+            os.unlink(tmp_path)
+            final_markdown += result.text_content
+
+    date_downloaded = datetime.now().strftime("%Y-%m-%d")
     meta = f"""
----
+<!--
 title: {title}
-source_url: {source_url}
+source_url: {url}
 date_downloaded: {date_downloaded}
-original_format: {original_format}
----
+original_format: {format}
+-->
     """
-    markdown = meta.strip() + "\n" + "\n".join(lines)
-    return markdown
+
+    final_markdown = meta + final_markdown
+
+    return final_markdown
