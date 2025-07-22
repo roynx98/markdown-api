@@ -1,0 +1,10 @@
+version: '3.8'
+services:
+  markdown-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./hashes.pkl:/app/hashes.pkl
+    ports:
+      - "8001:8001"
