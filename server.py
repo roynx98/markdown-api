@@ -29,6 +29,7 @@ async def convert_to_md(
 ):
     urls, title, alwaysGenerate = body.urls, body.title, body.alwaysGenerate
     final_markdown = ""
+    unmodified_count = 0
    
     for url in urls:
         format = get_format(url)
@@ -45,13 +46,16 @@ async def convert_to_md(
 
         hash = hashlib.sha256(markdown.encode("utf-8")).hexdigest()
         if hashes.get(url, '') == hash and not alwaysGenerate:
-            raise HTTPException(status_code=304, detail="No content modified")
+            unmodified_count += 1
 
         hashes[url] = hash
         with open(HASHES_PATH, "wb") as f:
             pickle.dump(hashes, f)
 
         final_markdown += markdown + "\n"
+
+    if unmodified_count == len(urls):
+        raise HTTPException(status_code=304, detail="No content modified for all URLs")
 
     date_downloaded = datetime.now().strftime("%Y-%m-%d")
     meta = f"""
@@ -61,7 +65,7 @@ source_url: {url}
 date_downloaded: {date_downloaded}
 original_format: {format}
 -->
-    """
+"""
 
     final_markdown = meta + final_markdown
 

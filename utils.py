@@ -9,6 +9,8 @@ md = MarkItDown()
 def get_format(url):
     if "docx" in url:
         return 'docx'
+    if "pdf" in url:
+        return 'pdf'
     if "msword" in url:
         return 'doc'
 
