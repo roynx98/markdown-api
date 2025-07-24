@@ -67,3 +67,5 @@ coverage.xml
 .vscode/
 
 .DS_Store
+
+*.pkl
