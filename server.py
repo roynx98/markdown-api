@@ -23,12 +23,13 @@ class ConvertRequest(BaseModel):
     title: str
     alwaysGenerate: bool = False
     format: str | None = None
+    cssSelector: str | None = None
 
 @app.post("/convert-to-md", response_class=PlainTextResponse)
 async def convert_to_md(
     body: ConvertRequest
 ):
-    urls, title, alwaysGenerate, req_format = body.urls, body.title, body.alwaysGenerate, body.format
+    urls, title, alwaysGenerate, req_format, css_selector = body.urls, body.title, body.alwaysGenerate, body.format, body.cssSelector
     final_markdown = ""
     unmodified_count = 0
    
@@ -43,7 +44,7 @@ async def convert_to_md(
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Failed to download file: {e}")
 
-        markdown = get_markdown(response, format)
+        markdown = get_markdown(response, format, css_selector)
 
         hash = hashlib.sha256(markdown.encode("utf-8")).hexdigest()
         if hashes.get(url, '') == hash and not alwaysGenerate:

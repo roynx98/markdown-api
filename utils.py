@@ -2,6 +2,7 @@ from fastapi import HTTPException
 from urllib.parse import urlparse
 import tempfile
 from markitdown import MarkItDown
+from bs4 import BeautifulSoup
 import os
 
 md = MarkItDown()
@@ -24,13 +25,20 @@ def get_headers(url: str) -> dict:
         "Referer": referer,
     }
 
-def get_markdown(response, format) -> str:
+def get_markdown(response, format, css_selector) -> str:
     mardown = ""
     if format == "md":
         mardown = response.text
     else:
         with tempfile.NamedTemporaryFile(delete=False, suffix="." + format) as tmp:
-            tmp.write(response.content)
+            if css_selector and format == "html":
+                soup = BeautifulSoup(response.content, "html.parser")
+                html_content = soup.select(css_selector)[0]
+                for img in html_content.select("img"):
+                    img.decompose()
+                tmp.write(html_content.encode("utf-8"))
+            else:
+                tmp.write(response.content)
             tmp_path = tmp.name
 
             try:
