@@ -22,17 +22,18 @@ class ConvertRequest(BaseModel):
     urls: list[str]
     title: str
     alwaysGenerate: bool = False
+    format: str | None = None
 
 @app.post("/convert-to-md", response_class=PlainTextResponse)
 async def convert_to_md(
     body: ConvertRequest
 ):
-    urls, title, alwaysGenerate = body.urls, body.title, body.alwaysGenerate
+    urls, title, alwaysGenerate, req_format = body.urls, body.title, body.alwaysGenerate, body.format
     final_markdown = ""
     unmodified_count = 0
    
     for url in urls:
-        format = get_format(url)
+        format = req_format if req_format else get_format(url)
         headers = get_headers(url)
 
         try:
