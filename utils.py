@@ -4,6 +4,7 @@ import tempfile
 from markitdown import MarkItDown
 from bs4 import BeautifulSoup
 import os
+import pypandoc
 
 md = MarkItDown()
 
@@ -14,6 +15,8 @@ def get_format(url):
         return 'pdf'
     if "msword" in url:
         return 'doc'
+    if "odt" in url:
+        return 'odt'
 
     return 'md'
 
@@ -37,9 +40,24 @@ def get_markdown(response, format, css_selector) -> str:
                 for img in html_content.select("img"):
                     img.decompose()
                 tmp.write(html_content.encode("utf-8"))
+            elif format == "odt":
+                tmp.write(response.content)
+                tmp_path = tmp.name
+                docx_path = tmp_path + '.docx'
+
+                try:
+                    pypandoc.convert_file(tmp_path, 'docx', outputfile=docx_path)
+                    with open(docx_path, "rb") as docx_file:
+                        converted_content = docx_file.read()
+                    tmp.write(converted_content)
+                    os.unlink(tmp_path)
+                    tmp_path = docx_path
+                except Exception as e:
+                    os.unlink(tmp_path)
+                    raise HTTPException(status_code=500, detail=f"ODT to DOCX conversion failed: {e}")
             else:
                 tmp.write(response.content)
-            tmp_path = tmp.name
+                tmp_path = tmp.name
 
             try:
                 result = md.convert(tmp_path)
