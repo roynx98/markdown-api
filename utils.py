@@ -18,7 +18,6 @@ def get_format_from_content_type(content_type: str) -> str:
     if 'odt' in content_type:
         return 'odt'
     return 'md'
-  
 
 def get_format(url):
     if "docx" in url:
@@ -58,13 +57,16 @@ def get_markdown(response, format, css_selector) -> str:
             elif format == "doc" or format == "odt":
                 tmp.write(response.content)
                 tmp_path = tmp.name
-                docx_path = tmp_path.replace(format, '.docx')
+                docx_path = tmp_path.replace('.' + format, '.docx')
 
                 libreoffice_cmd = f'libreoffice --headless --convert-to docx --outdir {os.path.dirname(tmp_path)} {tmp_path}'
                 exit_code = os.system(libreoffice_cmd)
                 if exit_code != 0 or not os.path.exists(docx_path):
                     os.unlink(tmp_path)
                     raise HTTPException(status_code=500, detail="DOCX conversion failed using LibreOffice.")
+
+                os.unlink(tmp_path)
+                tmp_path = docx_path
             else:
                 tmp.write(response.content)
                 tmp_path = tmp.name
