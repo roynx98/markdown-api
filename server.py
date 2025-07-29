@@ -3,7 +3,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from fastapi.responses import PlainTextResponse
 import httpx
-from utils import get_format, get_headers, get_markdown
+from utils import get_format, get_headers, get_markdown, get_format_from_content_type
 from datetime import datetime
 import hashlib
 import pickle
@@ -43,6 +43,9 @@ async def convert_to_md(
                 response.raise_for_status()
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Failed to download file: {e}")
+
+        if not format:
+            format = get_format_from_content_type(response.headers.get('Content-Type', ''))
 
         markdown = get_markdown(response, format, css_selector)
 

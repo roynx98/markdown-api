@@ -8,6 +8,19 @@ import pypandoc
 
 md = MarkItDown()
 
+def get_format_from_content_type(content_type: str) -> str:
+    content_type = content_type.lower()
+    if 'wordprocessingml' in content_type:
+        return 'docx'
+    if 'pdf' in content_type:
+        return 'pdf'
+    if 'msword' in content_type or 'doc' in content_type:
+        return 'doc'
+    if 'odt' in content_type:
+        return 'odt'
+    return 'md'
+  
+
 def get_format(url):
     if "docx" in url:
         return 'docx'
@@ -17,8 +30,9 @@ def get_format(url):
         return 'doc'
     if "odt" in url:
         return 'odt'
-
-    return 'md'
+    if ".md" in url:
+        return 'md'
+    return ''
 
 def get_headers(url: str) -> dict:
     parsed = urlparse(url)
