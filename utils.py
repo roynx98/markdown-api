@@ -4,7 +4,6 @@ import tempfile
 from markitdown import MarkItDown
 from bs4 import BeautifulSoup
 import os
-import pypandoc
 
 md = MarkItDown()
 
@@ -50,27 +49,22 @@ def get_markdown(response, format, css_selector) -> str:
         mardown = response.text
     else:
         with tempfile.NamedTemporaryFile(delete=False, suffix="." + format) as tmp:
-            if css_selector and format == "html":
+            if format == "html" and css_selector:
                 soup = BeautifulSoup(response.content, "html.parser")
                 html_content = soup.select(css_selector)[0]
                 for img in html_content.select("img"):
                     img.decompose()
                 tmp.write(html_content.encode("utf-8"))
-            elif format == "odt":
+            elif format == "doc" or format == "odt":
                 tmp.write(response.content)
                 tmp_path = tmp.name
-                docx_path = tmp_path + '.docx'
+                docx_path = tmp_path.replace(format, '.docx')
 
-                try:
-                    pypandoc.convert_file(tmp_path, 'docx', outputfile=docx_path)
-                    with open(docx_path, "rb") as docx_file:
-                        converted_content = docx_file.read()
-                    tmp.write(converted_content)
+                libreoffice_cmd = f'libreoffice --headless --convert-to docx --outdir {os.path.dirname(tmp_path)} {tmp_path}'
+                exit_code = os.system(libreoffice_cmd)
+                if exit_code != 0 or not os.path.exists(docx_path):
                     os.unlink(tmp_path)
-                    tmp_path = docx_path
-                except Exception as e:
-                    os.unlink(tmp_path)
-                    raise HTTPException(status_code=500, detail=f"ODT to DOCX conversion failed: {e}")
+                    raise HTTPException(status_code=500, detail="DOCX conversion failed using LibreOffice.")
             else:
                 tmp.write(response.content)
                 tmp_path = tmp.name
