@@ -16,7 +16,7 @@ if os.path.exists(HASHES_PATH):
     with open(HASHES_PATH, "rb") as f:
         hashes = pickle.load(f)
 else:
-    hashes = {}
+    hashes = set()
 
 class ConvertRequest(BaseModel):
     urls: list[str]
@@ -50,10 +50,10 @@ async def convert_to_md(
         markdown = get_markdown(response, format, css_selector)
 
         hash = hashlib.sha256(markdown.encode("utf-8")).hexdigest()
-        if hashes.get(url, '') == hash and not alwaysGenerate:
+        if hash in hashes and not alwaysGenerate:
             unmodified_count += 1
 
-        hashes[url] = hash
+        hashes.add(hash)
         with open(HASHES_PATH, "wb") as f:
             pickle.dump(hashes, f)
 
