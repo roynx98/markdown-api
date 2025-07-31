@@ -54,6 +54,7 @@ def get_markdown(response, format, css_selector) -> str:
                 for img in html_content.select("img"):
                     img.decompose()
                 tmp.write(html_content.encode("utf-8"))
+                tmp_path = tmp.name
             elif format == "doc" or format == "odt":
                 tmp.write(response.content)
                 tmp_path = tmp.name
