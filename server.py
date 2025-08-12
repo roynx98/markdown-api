@@ -49,7 +49,11 @@ async def convert_to_md(
 
         markdown = get_markdown(response, format, css_selector)
 
-        hash = hashlib.sha256(markdown.encode("utf-8")).hexdigest()
+        # Use the response content for hashing,
+        # because the markdown is not deterministic if the file is complex pdf
+        response_content = response.text if hasattr(response, 'text') else str(response.content)
+        hash = hashlib.sha256(response_content.encode("utf-8")).hexdigest()
+
         if hash in hashes and not alwaysGenerate:
             unmodified_count += 1
 
