@@ -19,7 +19,8 @@ else:
     hashes = set()
 
 class ConvertRequest(BaseModel):
-    urls: list[str]
+    scrapeUrl: str
+    friendlyUrl: str
     title: str
     alwaysGenerate: bool = False
     format: str | None = None
@@ -29,53 +30,45 @@ class ConvertRequest(BaseModel):
 async def convert_to_md(
     body: ConvertRequest
 ):
-    urls, title, alwaysGenerate, req_format, css_selector = body.urls, body.title, body.alwaysGenerate, body.format, body.cssSelector
-    final_markdown = ""
-    unmodified_count = 0
+    scrapeUrl = body.scrapeUrl
+    friendlyUrl = body.friendlyUrl
+    title = body.title
+    alwaysGenerate = body.alwaysGenerate
+    req_format = body.format
+    css_selector = body.cssSelector
    
-    for url in urls:
-        format = req_format if req_format else get_format(url)
-        headers = get_headers(url)
+    format = req_format if req_format else get_format(scrapeUrl)
+    headers = get_headers(scrapeUrl)
 
-        try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
-                response = await client.get(url, headers=headers)
-                response.raise_for_status()
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Failed to download file: {e}")
+    try:
+        async with httpx.AsyncClient(follow_redirects=True) as client:
+            response = await client.get(scrapeUrl, headers=headers)
+            response.raise_for_status()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to download file: {e}")
 
-        if not format:
-            format = get_format_from_content_type(response.headers.get('Content-Type', ''))
+    if not format:
+        format = get_format_from_content_type(response.headers.get("Content-Type", ""))
 
-        markdown = get_markdown(response, format, css_selector)
+    response_content = response.text if hasattr(response, "text") else str(response.content)
+    hash = hashlib.sha256(response_content.encode("utf-8")).hexdigest()
 
-        # Use the response content for hashing,
-        # because the markdown is not deterministic if the file is complex pdf
-        response_content = response.text if hasattr(response, 'text') else str(response.content)
-        hash = hashlib.sha256(response_content.encode("utf-8")).hexdigest()
-
-        if hash in hashes and not alwaysGenerate:
-            unmodified_count += 1
-
-        hashes.add(hash)
-        with open(HASHES_PATH, "wb") as f:
-            pickle.dump(hashes, f)
-
-        final_markdown += markdown + "\n"
-
-    if unmodified_count == len(urls):
+    if hash in hashes and not alwaysGenerate:
         raise HTTPException(status_code=304, detail="No content modified for all URLs")
+    markdown = get_markdown(response, format, css_selector)
+
+    hashes.add(hash)
+    with open(HASHES_PATH, "wb") as f:
+        pickle.dump(hashes, f)
 
     date_downloaded = datetime.now().strftime("%Y-%m-%d")
     meta = f"""
 <!--
 title: {title}
-source_url: {url}
+source_url: {friendlyUrl}
 date_downloaded: {date_downloaded}
 original_format: {format}
 -->
 """
 
-    final_markdown = meta + final_markdown
-
-    return final_markdown
+    return meta + markdown
