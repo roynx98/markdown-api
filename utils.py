@@ -71,11 +71,12 @@ def get_markdown(response, format, css_selector) -> str:
             tmp.write(response.content)
             tmp_path = tmp.name
 
-        try:
-            result = md.convert(tmp_path)
-        except Exception as e:
-            os.unlink(tmp_path)
-            raise HTTPException(status_code=500, detail=f"Conversion failed: {e}")
+    try:
+        result = md.convert(tmp_path)
+    except Exception as e:
         os.unlink(tmp_path)
+        raise HTTPException(status_code=500, detail=f"Conversion failed: {e}")
+
+    os.unlink(tmp_path)
         
-        return result.text_content
+    return result.text_content
