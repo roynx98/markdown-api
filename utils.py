@@ -42,16 +42,21 @@ def get_headers(url: str) -> dict:
         "Accept-Language": "en",
     }
 
+def get_html_content(response, css_selector) -> str:
+    soup = BeautifulSoup(response.content, "html.parser")
+    html_content = soup.select(css_selector)[0]
+    for img in html_content.select("img"):
+        img.decompose()
+
+    return html_content
+
 def get_markdown(response, format, css_selector) -> str:
     if format == "md":
         return response.text
 
     with tempfile.NamedTemporaryFile(delete=False, suffix="." + format) as tmp:
         if format == "html" and css_selector:
-            soup = BeautifulSoup(response.content, "html.parser")
-            html_content = soup.select(css_selector)[0]
-            for img in html_content.select("img"):
-                img.decompose()
+            html_content = get_html_content(response, css_selector)
             tmp.write(html_content.encode("utf-8"))
             tmp_path = tmp.name
         elif format == "doc" or format == "odt":

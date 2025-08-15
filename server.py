@@ -3,7 +3,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from fastapi.responses import PlainTextResponse
 import httpx
-from utils import get_format, get_headers, get_markdown, get_format_from_content_type
+from utils import get_format, get_headers, get_markdown, get_format_from_content_type, get_html_content
 from datetime import datetime
 import hashlib
 import pickle
@@ -51,6 +51,9 @@ async def convert_to_md(
         format = get_format_from_content_type(response.headers.get("Content-Type", ""))
 
     response_content = response.text if hasattr(response, "text") else str(response.content)
+    if format == "html" and css_selector:
+        response_content = get_html_content(response, css_selector)
+    
     hash = hashlib.sha256(response_content.encode("utf-8")).hexdigest()
 
     if hash in hashes and not alwaysGenerate:
