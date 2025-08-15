@@ -63,12 +63,12 @@ async def convert_to_md(
 
     date_downloaded = datetime.now().strftime("%Y-%m-%d")
     meta = f"""
-<!--
+---
 title: {title}
 source_url: {friendlyUrl}
 date_downloaded: {date_downloaded}
 original_format: {format}
--->
+---
 """
 
     return meta + markdown
