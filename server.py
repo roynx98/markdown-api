@@ -65,8 +65,7 @@ async def convert_to_md(
         pickle.dump(hashes, f)
 
     date_downloaded = datetime.now().strftime("%Y-%m-%d")
-    meta = f"""
----
+    meta = f"""---
 title: {title}
 source_url: {friendlyUrl}
 date_downloaded: {date_downloaded}
