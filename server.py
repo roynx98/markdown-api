@@ -65,7 +65,7 @@ async def convert_to_md(
         pickle.dump(hashes, f)
 
     date_downloaded = datetime.now().strftime("%Y-%m-%d")
-    if format == "md" and markdown.startswith("---"):
+    if (format == "md" or format == "html") and markdown.startswith("---"):
         markdown = "\n".join(markdown.splitlines()[1:])
         markdown = "\n".join(line for line in markdown.splitlines() if not line.strip().lower().startswith("title:"))
         meta = f"""---
